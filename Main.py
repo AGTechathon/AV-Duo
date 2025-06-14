@@ -3,16 +3,16 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 
 # Colors
-BG_COLOR = "#e6f0ff"       # Soft blue background
+BG_COLOR = "#e6f0ff"
 HEADER_COLOR = "#e6f0ff"
-BTN_COLOR = "#cce0ff"       # Light blue buttons
-TEXT_BG = "#f5faff"         # Pale blue text background
-TEXT_COLOR = "#003366"  
+BTN_COLOR = "#cce0ff"
+TEXT_BG = "#f5faff"
+TEXT_COLOR = "#003366"
 
 current_screen = "voice_to_text"
 pause_btn = None
 selected_audio_path = ""
-
+floating_label = None
 
 def switch_screen(screen):
     global current_screen
@@ -25,11 +25,9 @@ def switch_screen(screen):
     elif screen == "meeting":
         add_meeting_placeholder()
 
-
 def clear_content():
     for widget in content_frame.winfo_children():
         widget.destroy()
-
 
 def add_text_area_buttons():
     global pause_btn
@@ -87,7 +85,6 @@ def add_text_area_buttons():
     tk.Button(right_btn_frame, text="Edit", bg=BTN_COLOR, fg=TEXT_COLOR).pack(side="left", padx=5)
     tk.Button(right_btn_frame, text="Clear", bg=BTN_COLOR, fg=TEXT_COLOR).pack(side="left", padx=5)
 
-
 def add_audio_to_text():
     global output_text
 
@@ -143,16 +140,105 @@ def add_audio_to_text():
                           bg=TEXT_BG, fg=TEXT_COLOR, height=10)
     output_text.pack(fill="both", expand=False, padx=10, pady=(5, 10))
 
-
 def add_meeting_placeholder():
-    tk.Label(content_frame, text="Meeting Screen", font=("Arial", 14),
-             bg=BG_COLOR, fg=TEXT_COLOR).pack(pady=20)
+    def show_menu(event):
+        popup = tk.Menu(root, tearoff=0, bg=BTN_COLOR, fg=TEXT_COLOR, font=("Arial", 10))
+        popup.add_command(label="Save", command=save_text)
+        popup.add_command(label="Edit", command=open_editor)
+        popup.add_command(label="Clear", command=clear_text)
+        popup.tk_popup(event.x_root, event.y_root)
 
+    def save_text():
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt",
+                                                 filetypes=[("Text Files", "*.txt")])
+        if file_path:
+            with open(file_path, "w") as file:
+                file.write(meeting_text.get("1.0", tk.END))
+
+    def clear_text():
+        meeting_text.delete("1.0", tk.END)
+
+    def apply_format(style):
+        try:
+            start = meeting_text.index("sel.first")
+            end = meeting_text.index("sel.last")
+        except tk.TclError:
+            return
+
+        if style == "bold":
+            meeting_text.tag_add("bold", start, end)
+        elif style == "italic":
+            meeting_text.tag_add("italic", start, end)
+        elif style == "color":
+            meeting_text.tag_add("color", start, end)
+        elif style == "font":
+            meeting_text.tag_add("font", start, end)
+
+    def open_editor():
+        editor_popup = tk.Toplevel(root)
+        editor_popup.title("Edit Text")
+        editor_popup.geometry("250x200")
+        editor_popup.configure(bg=BG_COLOR)
+
+        tk.Button(editor_popup, text="Bold", command=lambda: apply_format("bold"),
+                  bg=BTN_COLOR, fg=TEXT_COLOR).pack(pady=5, fill="x", padx=10)
+        tk.Button(editor_popup, text="Italic", command=lambda: apply_format("italic"),
+                  bg=BTN_COLOR, fg=TEXT_COLOR).pack(pady=5, fill="x", padx=10)
+        tk.Button(editor_popup, text="Font: Times New Roman", command=lambda: apply_format("font"),
+                  bg=BTN_COLOR, fg=TEXT_COLOR).pack(pady=5, fill="x", padx=10)
+        tk.Button(editor_popup, text="Color: Dark Blue", command=lambda: apply_format("color"),
+                  bg=BTN_COLOR, fg=TEXT_COLOR).pack(pady=5, fill="x", padx=10)
+
+    def toggle_transcription():
+        global floating_label
+        if start_btn["text"] == "Start":
+            root.iconify()
+            floating_label = tk.Toplevel()
+            floating_label.overrideredirect(True)
+            floating_label.geometry("600x80+300+50")
+            floating_label.configure(bg="#fff4f8")
+            tk.Label(floating_label, text="Live Captioning... [transcribing]", font=("Arial", 14, "bold"),
+                     bg="#fff4f8", fg="#99004d").pack(padx=20, pady=20)
+            start_btn.config(text="Stop")
+        else:
+            start_btn.config(text="Start")
+            if floating_label:
+                floating_label.destroy()
+                floating_label = None
+            root.deiconify()
+
+    # Meeting layout
+    meeting_frame = tk.Frame(content_frame, bg=BG_COLOR)
+    meeting_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+    top_bar = tk.Frame(meeting_frame, bg=BG_COLOR)
+    top_bar.pack(anchor="ne", fill="x")
+
+    three_dots = tk.Label(top_bar, text="⋮", font=("Arial", 18), bg=BG_COLOR,
+                          fg=TEXT_COLOR, cursor="hand2")
+    three_dots.pack(anchor="ne", padx=10, pady=5)
+    three_dots.bind("<Button-1>", show_menu)
+
+    global meeting_text
+    meeting_text = tk.Text(meeting_frame, wrap="word", font=("Arial", 12),
+                           bg=TEXT_BG, fg=TEXT_COLOR, height=18)
+    meeting_text.pack(fill="both", expand=True, padx=10, pady=5)
+
+    meeting_text.tag_configure("bold", font=("Arial", 12, "bold"))
+    meeting_text.tag_configure("italic", font=("Arial", 12, "italic"))
+    meeting_text.tag_configure("color", foreground="darkblue")
+    meeting_text.tag_configure("font", font=("Times New Roman", 12))
+
+    global start_btn
+    start_btn = tk.Button(meeting_frame, text="Start", bg=BTN_COLOR, fg=TEXT_COLOR,
+                          font=("Arial", 12, "bold"), command=toggle_transcription)
+    start_btn.pack(pady=10)
 
 def open_menu():
     popup = tk.Toplevel(root)
     popup.overrideredirect(True)
-    popup.geometry("200x150+{}+{}".format(hamburger_btn.winfo_rootx(), hamburger_btn.winfo_rooty() + hamburger_btn.winfo_height()))
+    popup.geometry("200x150+{}+{}".format(hamburger_btn.winfo_rootx(),
+                                          hamburger_btn.winfo_rooty() + hamburger_btn.winfo_height()))
     popup.configure(bg=BG_COLOR)
 
     popup_frame = tk.Frame(popup, bg=BG_COLOR, bd=2, relief="raised")
@@ -169,14 +255,13 @@ def open_menu():
     tk.Button(popup_frame, text="Voice to Text", bg=BTN_COLOR, fg=TEXT_COLOR,
               command=lambda: [popup.destroy(), switch_screen("voice_to_text")]).pack(fill="x", pady=5, padx=10)
 
-
-# --- Main App Window ---
+# Main App Window
 root = tk.Tk()
 root.title("LiveNoteClass")
 root.geometry("1000x600")
 root.configure(bg=BG_COLOR)
 
-# --- Top Frame for Logo and Title ---
+# Top Frame for Logo and Title
 top_frame = tk.Frame(root, bg=BG_COLOR)
 top_frame.pack(pady=(10, 0), fill="x")
 
@@ -194,7 +279,6 @@ title_label = tk.Label(center_title_frame, text="LiveNoteClass", font=("Arial", 
                        bg=HEADER_COLOR, fg=TEXT_COLOR)
 title_label.pack(side="left")
 
-# Frame for holding hamburger button pinned top-left
 hamburger_frame = tk.Frame(root, bg=BG_COLOR)
 hamburger_frame.place(x=10, y=10)
 
