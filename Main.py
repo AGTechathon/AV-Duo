@@ -3,11 +3,11 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 
 # Colors
-BG_COLOR = "#ffffff"
-HEADER_COLOR = "#ffffff"
-BTN_COLOR = "#f0f0f0"
-TEXT_BG = "#ffffff"
-TEXT_COLOR = "#000000"
+BG_COLOR = "#e6f0ff"       # Soft blue background
+HEADER_COLOR = "#e6f0ff"
+BTN_COLOR = "#cce0ff"       # Light blue buttons
+TEXT_BG = "#f5faff"         # Pale blue text background
+TEXT_COLOR = "#003366"  
 
 current_screen = "voice_to_text"
 pause_btn = None
